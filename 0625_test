@@ -1,0 +1,58 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+import glob
+import numpy as np
+import pickle
+import tensorflow as tf
+from sklearn.preprocessing import MinMaxScaler
+
+
+# 비어있는거 만들고 파라메타 정의(뭘 뽑아올건지 목록) input =17개
+PARA = ['UAVLEG1', 'UAVLEG2', 'UAVLEG3', 'ZINST58', 'ZINST75','ZINST30', 'ZINST78', 'ZINST74',
+        'WFWLN1', 'WFWLN2', 'WFWLN3', 'ZINST26', 'ZINST22', 'BFV122','URHXUT','ZINST56','KBCDO23']
+
+with open('Data_file.bin','rb') as file:
+    total_Data = pickle.load(file)
+
+
+scaler = MinMaxScaler()
+scaler.fit(total_Data[0])
+
+total_Data[0] = scaler.transform(total_Data[0])
+
+with open('scaler.pkl','wb') as f:
+    pickle.dump(scaler, f)
+
+print(np.shape(total_Data[1]))
+inputs = tf.keras.Input(np.shape(total_Data[0])[1])
+hiden = tf.keras.layers.Dense(300, activation='relu')(inputs)
+hiden1 = tf.keras.layers.Dense(300)(hiden)
+hiden2 = tf.keras.layers.Dense(300)(hiden1)
+output = tf.keras.layers.Dense(np.shape(total_Data[1])[1] + 4, activation='softmax')(hiden2)
+model = tf.keras.models.Model(inputs,output)
+
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+his = model.fit(total_Data[0], total_Data[1], epochs=200, workers=3)
+# workers=5
+# -----------가중치를 저장
+model.save_weights('save_model.h5')
+
+
+out_trained = model.predict(total_Data[0][0:60])  # train_x
+plt.plot(total_Data[1][0:60], color='black') # train_y
+temp = {0:[], 1:[], 2:[], 3:[] ,4:[]}
+for _ in out_trained:
+    for __ in range(5):
+        temp[__].append(_[__])
+
+plt.plot(temp[0], label ='0', color = 'red')
+plt.plot(temp[1], label ='1', color = 'pink')
+plt.plot(temp[2], label ='2', color = 'green')
+plt.plot(temp[3], label ='3', color = 'blue')
+plt.plot(temp[4], label ='4', color = 'black')
+plt.legend()
+
+plt.show()
